@@ -1,97 +1,44 @@
 import mongoose from "mongoose";
-import {bcrypt} from "bcryptjs";
 import dotenv from "dotenv";
-import { UserModel } from "./user.model.js";
+import { hash } from "bcrypt";
+import studentModel from "./student.model.js";
 
 dotenv.config();
 
 
 async function seedDatabase() {
-
     try {
+        if (!process.env.DbURL) {
+            throw new Error("DbURL is not configured");
+        }
 
-        await mongoose.connect(process.env.MONGO_URI);
-
+        await mongoose.connect(process.env.DbURL);
         console.log("MongoDB connected");
 
-
-        const userPassword = await bcrypt.hash(
-            "user123456",
-            10
-        );
-
-        const adminPassword = await bcrypt.hash(
-            "admin123456",
-            10
-        );
-
-
-        await UserModel.findOneAndUpdate(
-
-            {
-                email: "user@gmail.com"
-            },
-
+        const password = await hash("user123456", 10);
+        await studentModel.findOneAndUpdate(
+            { email: "user@gmail.com" },
             {
                 name: "Test User",
                 email: "user@gmail.com",
-                password: userPassword,
-                role: "user",
+                password,
+                branch: "Computer Science",
+                year: 1,
                 active: true
             },
-
-            {
-                upsert: true,
-                new: true
-            }
-
+            { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
         );
-
-
-        await UserModel.findOneAndUpdate(
-
-            {
-                email: "admin@gmail.com"
-            },
-
-            {
-                name: "Admin User",
-                email: "admin@gmail.com",
-                password: adminPassword,
-                role: "admin",
-                active: true
-            },
-
-            {
-                upsert: true,
-                new: true
-            }
-
-        );
-
 
         console.log("Seed data created successfully");
-
-        console.log("");
         console.log("USER LOGIN");
         console.log("Email: user@gmail.com");
         console.log("Password: user123456");
-
-        console.log("");
-
-        console.log("ADMIN LOGIN");
-        console.log("Email: admin@gmail.com");
-        console.log("Password: admin123456");
-
-
-        await mongoose.disconnect();
-
     } catch (err) {
-
-        console.log("Seed error:", err.message);
-
+        console.error("Seed error:", err.message);
+        process.exitCode = 1;
+    } finally {
+        await mongoose.disconnect();
     }
-
 }
 
 seedDatabase();
